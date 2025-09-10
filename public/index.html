@@ -95,7 +95,7 @@ async function go() {
 
 async function loadUrl(url) {
   const iframe = document.createElement('iframe');
-  iframe.src = '/api/proxy?url=' + encodeURIComponent(url);
+iframe.src = '/api/proxy?url=' + encodeURIComponent(url);
   const browserDiv = document.getElementById('browser');
   browserDiv.innerHTML = '';
   browserDiv.appendChild(iframe);
