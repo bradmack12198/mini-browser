@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Browser-in-Browser</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+<style>
+body { margin:0; font-family: Arial, sans-serif; background:#ddd; }
+#toolbar { display:flex; align-items:center; padding:5px; background:#2c2c2c; color:white; border-bottom:1px solid #444; border-radius:0 0 5px 5px; }
+#toolbar button { margin-right:5px; padding:5px; border:none; background:#444; color:white; border-radius:3px; cursor:pointer; }
+#toolbar input { flex:1; padding:5px; margin-right:5px; border-radius:3px; border:none; }
+#tabs { display:flex; background:#3c3c3c; padding:2px; }
+.tab { padding:5px 10px; margin-right:2px; background:#555; border-radius:3px 3px 0 0; cursor:pointer; color:white; display:flex; align-items:center; }
+.tab.active { background:#fff; color:#000; font-weight:bold; }
+.close { margin-left:5px; color:red; cursor:pointer; font-weight:bold; }
+#browser { width:100%; height:calc(100vh - 70px); overflow:auto; background:white; border:1px solid #444; border-radius:0 0 5px 5px; }
+iframe { width:100%; height:100%; border:none; }
+</style>
+</head>
+<body>
+
+<div id="toolbar">
+  <button onclick="back()"><i class="fa fa-arrow-left"></i></button>
+  <button onclick="forward()"><i class="fa fa-arrow-right"></i></button>
+  <input id="url" placeholder="Enter URL" />
+  <button onclick="go()"><i class="fa fa-arrow-right"></i> Go</button>
+  <button onclick="newTab()"><i class="fa fa-plus"></i></button>
+</div>
+
+<div id="tabs"></div>
+<div id="browser"></div>
+
+<script>
+let tabs = [{ history: [], current: 0 }];
+let currentTab = 0;
+
+function updateTabs() {
+  const tabsDiv = document.getElementById('tabs');
+  tabsDiv.innerHTML = '';
+  tabs.forEach((t, i) => {
+    const tabDiv = document.createElement('div');
+    tabDiv.className = 'tab' + (i === currentTab ? ' active' : '');
+    tabDiv.textContent = 'Tab ' + (i + 1);
+
+    const closeBtn = document.createElement('span');
+    closeBtn.textContent = '×';
+    closeBtn.className = 'close';
+    closeBtn.onclick = (e) => { e.stopPropagation(); closeTab(i); };
+    tabDiv.appendChild(closeBtn);
+
+    tabDiv.onclick = () => switchTab(i);
+    tabsDiv.appendChild(tabDiv);
+  });
+}
+
+function newTab() {
+  tabs.push({ history: [], current: 0 });
+  currentTab = tabs.length - 1;
+  updateTabs();
+  document.getElementById('browser').innerHTML = '';
+}
+
+function closeTab(index) {
+  tabs.splice(index, 1);
+  if (currentTab >= tabs.length) currentTab = tabs.length - 1;
+  updateTabs();
+  if (tabs.length > 0) {
+    const tab = tabs[currentTab];
+    if (tab.history.length > 0) loadUrl(tab.history[tab.current]);
+    else document.getElementById('browser').innerHTML = '';
+  } else {
+    document.getElementById('browser').innerHTML = '';
+  }
+}
+
+function switchTab(index) {
+  currentTab = index;
+  updateTabs();
+  const tab = tabs[currentTab];
+  if (tab.history.length > 0) loadUrl(tab.history[tab.current]);
+  else document.getElementById('browser').innerHTML = '';
+}
+
+async function go() {
+  let input = document.getElementById('url').value;
+  if (!input.startsWith('http')) input = 'https://' + input;
+
+  const tab = tabs[currentTab];
+  tab.history.push(input);
+  tab.current = tab.history.length - 1;
+  updateTabs();
+
+  await loadUrl(input);
+}
+
+async function loadUrl(url) {
+  const iframe = document.createElement('iframe');
+  iframe.src = '/api/proxy?url=' + encodeURIComponent(url);
+  const browserDiv = document.getElementById('browser');
+  browserDiv.innerHTML = '';
+  browserDiv.appendChild(iframe);
+
+  document.getElementById('url').value = url;
+}
+
+async function back() {
+  const tab = tabs[currentTab];
+  if (tab.current > 0) {
+    tab.current--;
+    await loadUrl(tab.history[tab.current]);
+  }
+}
+
+async function forward() {
+  const tab = tabs[currentTab];
+  if (tab.current < tab.history.length - 1) {
+    tab.current++;
+    await loadUrl(tab.history[tab.current]);
+  }
+}
+
+// Initialize first tab
+updateTabs();
+</script>
+
+</body>
+</html>
